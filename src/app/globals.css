@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  
+  --color-primary: #1a4d2e;
+  --color-secondary: #e8dfca;
+  --color-accent: #ff9f29;
+}
+
+:root {
+  --bg-page: #faf9f6;
+  --text-main: #1c1917;
+  --text-muted: #57534e;
+  --border-color: #e7e5e4;
+  --card-bg: #ffffff;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-main);
+    @apply font-sans transition-colors duration-300;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+.glass-card {
+  @apply backdrop-blur-md border border-white/20 shadow-sm;
+  background-color: var(--card-bg);
+}
+
+.section-padding {
+  @apply py-16 md:py-24 px-6 md:px-12 max-w-7xl mx-auto;
+}
+
+.bg-card {
+  background-color: var(--card-bg);
+}
+
+.border-main {
+  border-color: var(--border-color);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}

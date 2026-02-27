@@ -1,0 +1,7 @@
+{
+  "name": "Al-Insaf Foundation",
+  "description": "A modern, clean website for Al-Insaf Foundation, a non-profit organization dedicated to justice and social welfare.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

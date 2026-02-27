@@ -1,0 +1,389 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { GoogleGenAI } from "@google/genai";
+
+type Language = 'en' | 'bn';
+
+interface AppContextType {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string) => string;
+  translate: (text: string) => Promise<string>;
+  isTranslating: boolean;
+}
+
+const translations = {
+  en: {
+    'nav.home': 'Home',
+    'nav.about': 'About Us',
+    'nav.campaigns': 'Campaigns',
+    'nav.gallery': 'Gallery',
+    'nav.volunteer': 'Volunteer',
+    'nav.contact': 'Contact',
+    'nav.donate': 'Donate Now',
+    'hero.badge': 'Serving Humanity',
+    'hero.title': 'Bringing Justice & Relief to the Vulnerable',
+    'hero.desc': 'Al-Insaf Foundation is a non-profit organization dedicated to providing essential aid and restoring dignity to communities in need.',
+    'hero.cta.donate': 'Start Donating',
+    'hero.cta.learn': 'Learn More',
+    'stats.lives': 'Lives Impacted',
+    'stats.projects': 'Projects Done',
+    'stats.volunteers': 'Volunteers',
+    'stats.countries': 'Countries',
+    'features.title': 'Why Choose Al-Insaf?',
+    'features.desc': 'We believe in transparent, impactful, and sustainable solutions for the world\'s most pressing challenges.',
+    'features.transparency.title': 'Transparency',
+    'features.transparency.desc': 'Every penny you donate is tracked and reported with full accountability.',
+    'features.global.title': 'Global Reach',
+    'features.global.desc': 'Our network spans across borders to reach those in most desperate need.',
+    'features.community.title': 'Community Driven',
+    'features.community.desc': 'We work directly with local leaders to ensure sustainable growth.',
+    'activities.title': 'Our Recent Activities',
+    'activities.desc': 'Witness the impact of your support through our latest field work and community service.',
+    'activities.iftar': 'Iftar Distribution',
+    'activities.clothing': 'Clothing for All',
+    'activities.medical': 'Medical Assistance',
+    'activities.iftar.desc': 'Providing nutritious meals to families during the holy month of Ramadan.',
+    'activities.clothing.desc': 'Distributing warm clothes and essentials to those in need during winter.',
+    'activities.medical.desc': 'Free health checkups and medicine distribution in remote areas.',
+    'video.title': 'Watch Our Impact',
+    'video.desc': 'See how your contributions are changing lives on the ground. Every video tells a story of hope.',
+    'inspire.title': 'Be the Change the World Needs',
+    'inspire.desc': 'Your small act of kindness can ignite a flame of hope in someone\'s darkest hour. Watch how we turn your compassion into action.',
+    'inspire.cta': 'Donate to Save Lives',
+    'team.title': 'Our Core Team',
+    'team.desc': 'The dedicated leaders driving our mission forward.',
+    'team.role.chairman': 'Chairman',
+    'team.role.director': 'Executive Director',
+    'team.role.head': 'Project Head',
+    'team.role.coordinator': 'Volunteer Coordinator',
+    'cta.title': 'Ready to make an impact?',
+    'cta.desc': 'Whether you donate your time or your resources, every bit helps us bring justice and relief to those who need it most.',
+    'cta.button': 'Make a Donation Now',
+    'about.header.desc': 'Dedicated to restoring justice and providing relief to the most vulnerable communities across the globe.',
+    'about.mission.title': 'Our Mission',
+    'about.mission.desc': 'To empower underserved communities by providing access to quality education, healthcare, and sustainable economic opportunities, while advocating for social justice and human rights for all.',
+    'about.vision.title': 'Our Vision',
+    'about.vision.desc': 'A world where every individual has the opportunity to thrive in a just, equitable, and compassionate society, free from poverty and oppression.',
+    'about.values.title': 'Our Core Values',
+    'about.values.desc': 'The principles that guide everything we do.',
+    'about.values.integrity': 'Integrity',
+    'about.values.integrity.desc': 'We act with honesty and transparency in all our dealings.',
+    'about.values.compassion': 'Compassion',
+    'about.values.compassion.desc': 'We serve with empathy and a deep commitment to human dignity.',
+    'about.values.justice': 'Justice',
+    'about.values.justice.desc': 'We strive for fairness and equity in every community we serve.',
+    'about.values.excellence': 'Excellence',
+    'about.values.excellence.desc': 'We aim for the highest standards in our programs and operations.',
+    'about.team.title': 'Meet Our Team',
+    'about.team.desc': 'The passionate individuals behind Al-Insaf Foundation.',
+    'volunteer.title': 'Join Our Mission',
+    'volunteer.desc': 'Volunteers are the backbone of Al-Insaf Foundation. By giving your time and skills, you can help us reach more people and create lasting change in communities that need it most.',
+    'volunteer.form.title': 'Registration Form',
+    'volunteer.form.name': 'Full Name',
+    'volunteer.form.email': 'Email Address',
+    'volunteer.form.phone': 'Phone Number',
+    'volunteer.form.interest': 'Area of Interest',
+    'volunteer.form.submit': 'Submit Application',
+    'volunteer.benefit.impact': 'Community Impact',
+    'volunteer.benefit.impact.desc': 'Work directly with local communities.',
+    'volunteer.benefit.skills': 'Skill Sharing',
+    'volunteer.benefit.skills.desc': 'Use your professional skills for good.',
+    'volunteer.benefit.growth': 'Personal Growth',
+    'volunteer.benefit.growth.desc': 'Gain experience and new perspectives.',
+    'volunteer.benefit.network': 'Global Network',
+    'volunteer.benefit.network.desc': 'Connect with like-minded changemakers.',
+    'volunteer.testimonial': '"Volunteering with Al-Insaf changed my life as much as those I helped."',
+    'volunteer.testimonial.author': '— David Miller, Volunteer since 2021',
+    'volunteer.form.dob': 'Date of Birth',
+    'volunteer.form.motivation': 'Why do you want to join?',
+    'volunteer.form.motivation.placeholder': 'Tell us about your motivation...',
+    'volunteer.form.interest.edu': 'Education & Teaching',
+    'volunteer.form.interest.health': 'Healthcare & Medical',
+    'volunteer.form.interest.relief': 'Disaster Relief',
+    'volunteer.form.interest.fund': 'Fundraising & Events',
+    'volunteer.form.interest.admin': 'Administrative Support',
+    'contact.title': 'Get in Touch',
+    'contact.desc': 'Have questions or want to collaborate? We would love to hear from you.',
+    'contact.form.name': 'Your Name',
+    'contact.form.message': 'Message',
+    'contact.form.send': 'Send Message',
+    'contact.info.title': 'Contact Information',
+    'contact.info.email': 'Email Us',
+    'contact.info.email.sub': 'We reply within 24 hours',
+    'contact.info.phone': 'Call Us',
+    'contact.info.phone.sub': 'Mon-Fri from 9am to 6pm',
+    'contact.info.visit': 'Visit Us',
+    'contact.info.visit.sub': 'Bangladesh, 1212',
+    'contact.social.title': 'Follow Our Progress',
+    'contact.support.title': 'Live Support',
+    'contact.support.desc': 'Our team is available for real-time chat during business hours.',
+    'contact.support.cta': 'Start Chatting',
+    'contact.form.title': 'Send us a Message',
+    'contact.form.subject': 'Subject',
+    'contact.form.subject.placeholder': 'How can we help?',
+    'contact.form.message.placeholder': 'Write your message here...',
+    'contact.map.title': 'Our Headquarters',
+    'contact.map.address': '123 Justice Way, Mirpur, Dhaka, Bangladesh',
+    'contact.map.hours': 'Open for visitors from 10am to 4pm daily. Please schedule an appointment.',
+    'campaigns.active': 'Active Campaigns',
+    'campaigns.viewAll': 'View All Campaigns',
+    'donate.title': 'Make a Donation',
+    'donate.desc': 'Your contribution brings us one step closer to a more just and equitable world.',
+    'donate.bkash': 'bKash (Personal)',
+    'donate.nagad': 'Nagad (Personal)',
+    'donate.bank': 'Bank Transfer',
+    'donate.bank.info': 'Al-Insaf Foundation, Account: 123456789, Bank: Islamic Bank BD',
+    'campaigns.header.desc': 'Explore our active projects and choose a cause that resonates with you. Every donation, no matter how small, makes a significant impact.',
+    'campaigns.search': 'Search campaigns...',
+    'campaigns.cat.all': 'All',
+    'campaigns.cat.edu': 'Education',
+    'campaigns.cat.health': 'Health',
+    'campaigns.cat.crisis': 'Crisis',
+    'campaigns.cat.env': 'Environment',
+    'campaigns.cat.live': 'Livelihood',
+    'campaigns.raised': 'Raised',
+    'campaigns.goal': 'Goal',
+    'campaigns.details': 'Details',
+    'campaigns.donate': 'Donate',
+    'gallery.header.desc': 'A visual journey through our projects and the lives we\'ve touched. Every photo tells a story of hope and resilience.',
+    'gallery.cat.all': 'All',
+    'gallery.cat.edu': 'Education',
+    'gallery.cat.health': 'Health',
+    'gallery.cat.water': 'Water',
+    'gallery.cat.crisis': 'Crisis',
+    'footer.desc': 'Al-Insaf Foundation is dedicated to serving humanity through justice, compassion, and sustainable development. Together, we can build a better world.',
+    'footer.links': 'Quick Links',
+    'footer.contact': 'Contact Info',
+    'footer.newsletter': 'Newsletter',
+  },
+  bn: {
+    'nav.home': 'হোম',
+    'nav.about': 'আমাদের সম্পর্কে',
+    'nav.campaigns': 'ক্যাম্পেইন',
+    'nav.gallery': 'গ্যালারি',
+    'nav.volunteer': 'স্বেচ্ছাসেবক',
+    'nav.contact': 'যোগাযোগ',
+    'nav.donate': 'এখনই দান করুন',
+    'hero.badge': 'মানবতার সেবা',
+    'hero.title': 'অসহায়দের মাঝে ন্যায়বিচার ও ত্রাণ পৌঁছে দেওয়া',
+    'hero.desc': 'আল-ইনসাফ ফাউন্ডেশন একটি অলাভজনক সংস্থা যা প্রয়োজনীয় সহায়তা প্রদান এবং অভাবী সম্প্রদায়গুলোর মর্যাদা পুনরুদ্ধারে নিবেদিত।',
+    'hero.cta.donate': 'দান শুরু করুন',
+    'hero.cta.learn': 'আরও জানুন',
+    'stats.lives': 'প্রভাবিত জীবন',
+    'stats.projects': 'সম্পন্ন প্রকল্প',
+    'stats.volunteers': 'স্বেচ্ছাসেবক',
+    'stats.countries': 'দেশসমূহ',
+    'features.title': 'কেন আল-ইনসাফ বেছে নেবেন?',
+    'features.desc': 'আমরা বিশ্বের সবচেয়ে জরুরি চ্যালেঞ্জগুলোর জন্য স্বচ্ছ, প্রভাবশালী এবং টেকসই সমাধানে বিশ্বাস করি।',
+    'features.transparency.title': 'স্বচ্ছতা',
+    'features.transparency.desc': 'আপনার দান করা প্রতিটি পয়সা ট্র্যাক করা হয় এবং পূর্ণ জবাবদিহিতার সাথে রিপোর্ট করা হয়।',
+    'features.global.title': 'বৈশ্বিক পরিধি',
+    'features.global.desc': 'আমাদের নেটওয়ার্ক সীমানা ছাড়িয়ে সবচেয়ে অসহায় মানুষের কাছে পৌঁছায়।',
+    'features.community.title': 'সম্প্রদায় চালিত',
+    'features.community.desc': 'আমরা টেকসই প্রবৃদ্ধি নিশ্চিত করতে সরাসরি স্থানীয় নেতাদের সাথে কাজ করি।',
+    'activities.title': 'আমাদের সাম্প্রতিক কার্যক্রম',
+    'activities.desc': 'আমাদের সাম্প্রতিক মাঠপর্যায়ের কাজ এবং সমাজসেবার মাধ্যমে আপনার সহযোগিতার প্রভাব দেখুন।',
+    'activities.iftar': 'ইফতার বিতরণ',
+    'activities.clothing': 'সবার জন্য পোশাক',
+    'activities.medical': 'চিকিৎসা সহায়তা',
+    'activities.iftar.desc': 'পবিত্র রমজান মাসে পরিবারগুলোর মাঝে পুষ্টিকর খাবার সরবরাহ করা।',
+    'activities.clothing.desc': 'শীতকালে অভাবী মানুষের মাঝে গরম কাপড় ও প্রয়োজনীয় সামগ্রী বিতরণ।',
+    'activities.medical.desc': 'দুর্গম এলাকায় বিনামূল্যে স্বাস্থ্য পরীক্ষা ও ওষুধ বিতরণ।',
+    'video.title': 'আমাদের প্রভাব দেখুন',
+    'video.desc': 'আপনার অবদান কীভাবে মানুষের জীবন পরিবর্তন করছে তা দেখুন। প্রতিটি ভিডিও আশার গল্প বলে।',
+    'inspire.title': 'বিশ্বের প্রয়োজনীয় পরিবর্তন হোন',
+    'inspire.desc': 'আপনার দয়ার একটি ছোট কাজ কারো অন্ধকার সময়ে আশার আলো জ্বালাতে পারে। দেখুন কীভাবে আমরা আপনার করুণাকে কাজে পরিণত করি।',
+    'inspire.cta': 'জীবন বাঁচাতে দান করুন',
+    'team.title': 'আমাদের মূল দল',
+    'team.desc': 'আমাদের লক্ষ্যকে এগিয়ে নিয়ে যাওয়ার জন্য নিবেদিতপ্রাণ নেতৃবৃন্দ।',
+    'team.role.chairman': 'চেয়ারম্যান',
+    'team.role.director': 'নির্বাহী পরিচালক',
+    'team.role.head': 'প্রকল্প প্রধান',
+    'team.role.coordinator': 'স্বেচ্ছাসেবক সমন্বয়কারী',
+    'cta.title': 'প্রভাব ফেলতে প্রস্তুত?',
+    'cta.desc': 'আপনি আপনার সময় বা আপনার সম্পদ দান করুন না কেন, প্রতিটি ছোট অংশ আমাদের সবচেয়ে বেশি প্রয়োজন এমন লোকদের কাছে ন্যায়বিচার এবং ত্রাণ পৌঁছে দিতে সহায়তা করে।',
+    'cta.button': 'এখনই দান করুন',
+    'about.header.desc': 'বিশ্বজুড়ে সবচেয়ে অসহায় সম্প্রদায়গুলোর জন্য ন্যায়বিচার পুনরুদ্ধার এবং ত্রাণ প্রদানের জন্য নিবেদিত।',
+    'about.mission.title': 'আমাদের লক্ষ্য',
+    'about.mission.desc': 'মানসম্মত শিক্ষা, স্বাস্থ্যসেবা এবং টেকসই অর্থনৈতিক সুযোগ প্রদানের মাধ্যমে সুবিধাবঞ্চিত সম্প্রদায়গুলোকে ক্ষমতায়ন করা, পাশাপাশি সবার জন্য সামাজিক ন্যায়বিচার এবং মানবাধিকারের পক্ষে কথা বলা।',
+    'about.vision.title': 'আমাদের দৃষ্টিভঙ্গি',
+    'about.vision.desc': 'এমন একটি বিশ্ব যেখানে প্রতিটি ব্যক্তির একটি ন্যায়সঙ্গত, সাম্যবাদী এবং সহানুভূতিশীল সমাজে দারিদ্র্য ও নিপীড়ন থেকে মুক্ত হয়ে বেড়ে ওঠার সুযোগ রয়েছে।',
+    'about.values.title': 'আমাদের মূল মূল্যবোধ',
+    'about.values.desc': 'যে নীতিগুলো আমাদের প্রতিটি কাজকে পরিচালিত করে।',
+    'about.values.integrity': 'সততা',
+    'about.values.integrity.desc': 'আমরা আমাদের সমস্ত লেনদেনে সততা এবং স্বচ্ছতার সাথে কাজ করি।',
+    'about.values.compassion': 'সহমর্মিতা',
+    'about.values.compassion.desc': 'আমরা সহানুভূতি এবং মানবিক মর্যাদার প্রতি গভীর অঙ্গীকারের সাথে সেবা করি।',
+    'about.values.justice': 'ন্যায়বিচার',
+    'about.values.justice.desc': 'আমরা প্রতিটি সম্প্রদায়ের জন্য ন্যায্যতা এবং সাম্য নিশ্চিত করার চেষ্টা করি।',
+    'about.values.excellence': 'উৎকর্ষ',
+    'about.values.excellence.desc': 'আমরা আমাদের কর্মসূচি এবং কার্যক্রমে সর্বোচ্চ মান অর্জনের লক্ষ্য রাখি।',
+    'about.team.title': 'আমাদের দলের সাথে পরিচিত হোন',
+    'about.team.desc': 'আল-ইনসাফ ফাউন্ডেশনের পেছনে থাকা নিবেদিতপ্রাণ ব্যক্তিরা।',
+    'volunteer.title': 'আমাদের মিশনে যোগ দিন',
+    'volunteer.desc': 'স্বেচ্ছাসেবকরা আল-ইনসাফ ফাউন্ডেশনের মেরুদণ্ড। আপনার সময় এবং দক্ষতা প্রদানের মাধ্যমে, আপনি আমাদের আরও মানুষের কাছে পৌঁছাতে এবং সবচেয়ে বেশি প্রয়োজন এমন সম্প্রদায়গুলোতে স্থায়ী পরিবর্তন আনতে সাহায্য করতে পারেন।',
+    'volunteer.form.title': 'রেজিস্ট্রেশন ফর্ম',
+    'volunteer.form.name': 'পুরো নাম',
+    'volunteer.form.email': 'ইমেল ঠিকানা',
+    'volunteer.form.phone': 'ফোন নম্বর',
+    'volunteer.form.interest': 'আগ্রহের ক্ষেত্র',
+    'volunteer.form.submit': 'আবেদন জমা দিন',
+    'volunteer.benefit.impact': 'সামাজিক প্রভাব',
+    'volunteer.benefit.impact.desc': 'সরাসরি স্থানীয় সম্প্রদায়ের সাথে কাজ করুন।',
+    'volunteer.benefit.skills': 'দক্ষতা ভাগাভাগি',
+    'volunteer.benefit.skills.desc': 'ভালোর জন্য আপনার পেশাদার দক্ষতা ব্যবহার করুন।',
+    'volunteer.benefit.growth': 'ব্যক্তিগত বৃদ্ধি',
+    'volunteer.benefit.growth.desc': 'অভিজ্ঞতা এবং নতুন দৃষ্টিভঙ্গি অর্জন করুন।',
+    'volunteer.benefit.network': 'বৈশ্বিক নেটওয়ার্ক',
+    'volunteer.benefit.network.desc': 'সমমনা পরিবর্তনকারীদের সাথে সংযোগ স্থাপন করুন।',
+    'volunteer.testimonial': '"আল-ইনসাফের সাথে স্বেচ্ছাসেবক হিসেবে কাজ করা আমার জীবনকে ততটাই বদলে দিয়েছে যতটা আমি যাদের সাহায্য করেছি তাদের জীবন বদলেছে।"',
+    'volunteer.testimonial.author': '— ডেভিড মিলার, ২০২১ সাল থেকে স্বেচ্ছাসেবক',
+    'volunteer.form.dob': 'জন্ম তারিখ',
+    'volunteer.form.motivation': 'আপনি কেন যোগ দিতে চান?',
+    'volunteer.form.motivation.placeholder': 'আপনার অনুপ্রেরণা সম্পর্কে আমাদের বলুন...',
+    'volunteer.form.interest.edu': 'শিক্ষা ও শিক্ষকতা',
+    'volunteer.form.interest.health': 'স্বাস্থ্যসেবা ও চিকিৎসা',
+    'volunteer.form.interest.relief': 'দুর্যোগ ত্রাণ',
+    'volunteer.form.interest.fund': 'তহবিল সংগ্রহ ও ইভেন্ট',
+    'volunteer.form.interest.admin': 'প্রশাসনিক সহায়তা',
+    'contact.title': 'যোগাযোগ করুন',
+    'contact.desc': 'প্রশ্ন আছে বা সহযোগিতা করতে চান? আমরা আপনার কাছ থেকে শুনতে পছন্দ করব।',
+    'contact.form.name': 'আপনার নাম',
+    'contact.form.message': 'বার্তা',
+    'contact.form.send': 'বার্তা পাঠান',
+    'contact.info.title': 'যোগাযোগের তথ্য',
+    'contact.info.email': 'আমাদের ইমেল করুন',
+    'contact.info.email.sub': 'আমরা ২৪ ঘণ্টার মধ্যে উত্তর দিই',
+    'contact.info.phone': 'আমাদের কল করুন',
+    'contact.info.phone.sub': 'সোম-শুক্র সকাল ৯টা থেকে সন্ধ্যা ৬টা পর্যন্ত',
+    'contact.info.visit': 'আমাদের সাথে দেখা করুন',
+    'contact.info.visit.sub': 'বাংলাদেশ, ১২১২',
+    'contact.social.title': 'আমাদের অগ্রগতি অনুসরণ করুন',
+    'contact.support.title': 'লাইভ সাপোর্ট',
+    'contact.support.desc': 'ব্যবসায়িক সময়ের মধ্যে আমাদের দল রিয়েল-টাইম চ্যাটের জন্য উপলব্ধ।',
+    'contact.support.cta': 'চ্যাট শুরু করুন',
+    'contact.form.title': 'আমাদের একটি বার্তা পাঠান',
+    'contact.form.subject': 'বিষয়',
+    'contact.form.subject.placeholder': 'আমরা কীভাবে সাহায্য করতে পারি?',
+    'contact.form.message.placeholder': 'আপনার বার্তা এখানে লিখুন...',
+    'contact.map.title': 'আমাদের সদর দপ্তর',
+    'contact.map.address': '১২৩ জাস্টিস ওয়ে, মিরপুর, ঢাকা, বাংলাদেশ',
+    'contact.map.hours': 'প্রতিদিন সকাল ১০টা থেকে বিকাল ৪টা পর্যন্ত দর্শনার্থীদের জন্য উন্মুক্ত। অনুগ্রহ করে অ্যাপয়েন্টমেন্ট নিন।',
+    'campaigns.active': 'চলমান ক্যাম্পেইন',
+    'campaigns.viewAll': 'সব ক্যাম্পেইন দেখুন',
+    'donate.title': 'দান করুন',
+    'donate.desc': 'আপনার অবদান আমাদের একটি ন্যায়সঙ্গত এবং সাম্যবাদী বিশ্ব গড়ার এক ধাপ কাছাকাছি নিয়ে যায়।',
+    'donate.bkash': 'বিকাশ (পার্সোনাল)',
+    'donate.nagad': 'নগদ (পার্সোনাল)',
+    'donate.bank': 'ব্যাংক ট্রান্সফার',
+    'donate.bank.info': 'আল-ইনসাফ ফাউন্ডেশন, অ্যাকাউন্ট: ১২৩৪৫৬৭৮৯, ব্যাংক: ইসলামী ব্যাংক বিডি',
+    'campaigns.header.desc': 'আমাদের সাম্প্রতিক প্রকল্পগুলো অন্বেষণ করুন এবং আপনার পছন্দের একটি কারণ বেছে নিন। প্রতিটি দান, তা যত ছোটই হোক না কেন, একটি গুরুত্বপূর্ণ প্রভাব ফেলে।',
+    'campaigns.search': 'ক্যাম্পেইন খুঁজুন...',
+    'campaigns.cat.all': 'সব',
+    'campaigns.cat.edu': 'শিক্ষা',
+    'campaigns.cat.health': 'স্বাস্থ্য',
+    'campaigns.cat.crisis': 'সংকট',
+    'campaigns.cat.env': 'পরিবেশ',
+    'campaigns.cat.live': 'জীবিকা',
+    'campaigns.raised': 'সংগৃহীত',
+    'campaigns.goal': 'লক্ষ্য',
+    'campaigns.details': 'বিস্তারিত',
+    'campaigns.donate': 'দান করুন',
+    'gallery.header.desc': 'আমাদের প্রকল্প এবং আমরা যে জীবনগুলোকে স্পর্শ করেছি তার একটি ভিজ্যুয়াল যাত্রা। প্রতিটি ছবি আশা এবং সহনশীলতার গল্প বলে।',
+    'gallery.cat.all': 'সব',
+    'gallery.cat.edu': 'শিক্ষা',
+    'gallery.cat.health': 'স্বাস্থ্য',
+    'gallery.cat.water': 'পানি',
+    'gallery.cat.crisis': 'সংকট',
+    'footer.desc': 'আল-ইনসাফ ফাউন্ডেশন ন্যায়বিচার, মমতা এবং টেকসই উন্নয়নের মাধ্যমে মানবতার সেবায় নিয়োজিত। একসাথে আমরা একটি সুন্দর পৃথিবী গড়তে পারি।',
+    'footer.links': 'দ্রুত লিঙ্ক',
+    'footer.contact': 'যোগাযোগের তথ্য',
+    'footer.newsletter': 'নিউজলেটার',
+  }
+};
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('language') as Language) || 'en';
+    }
+    return 'en';
+  });
+
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [dynamicCache, setDynamicCache] = useState<Record<string, string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dynamic_translations');
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('language', language);
+    document.documentElement.lang = language;
+  }, [language]);
+
+  useEffect(() => {
+    localStorage.setItem('dynamic_translations', JSON.stringify(dynamicCache));
+  }, [dynamicCache]);
+
+  const setLanguage = (lang: Language) => setLanguageState(lang);
+
+  const t = (key: string) => {
+    // Check static translations first
+    const staticTranslation = translations[language][key as keyof typeof translations['en']];
+    if (staticTranslation) return staticTranslation;
+
+    // Check dynamic cache
+    const cacheKey = `${language}:${key}`;
+    if (dynamicCache[cacheKey]) return dynamicCache[dynamicCache[cacheKey]];
+
+    return key;
+  };
+
+  const translate = useCallback(async (text: string): Promise<string> => {
+    if (!text || language === 'en') return text;
+    
+    const cacheKey = `${language}:${text}`;
+    if (dynamicCache[cacheKey]) return dynamicCache[cacheKey];
+
+    setIsTranslating(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
+      
+      const prompt = `Translate the following text to ${language === 'bn' ? 'Bengali' : 'English'}. Return ONLY the translated text, nothing else: "${text}"`;
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+      });
+      
+      const translatedText = response.text?.trim() || text;
+      
+      setDynamicCache(prev => ({ ...prev, [cacheKey]: translatedText }));
+      return translatedText;
+    } catch (error) {
+      console.error("Translation error:", error);
+      return text;
+    } finally {
+      setIsTranslating(false);
+    }
+  }, [language, dynamicCache]);
+
+  return (
+    <AppContext.Provider value={{ language, setLanguage, t, translate, isTranslating }}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useAppContext = () => {
+  const context = useContext(AppContext);
+  if (!context) throw new Error('useAppContext must be used within AppProvider');
+  return context;
+};
