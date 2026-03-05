@@ -1,9 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleGenAI } from "@google/genai";
 
 type Language = 'en' | 'bn';
+type Theme = 'light' | 'dark';
 
 interface AppContextType {
   language: Language;
@@ -11,6 +12,8 @@ interface AppContextType {
   t: (key: string) => string;
   translate: (text: string) => Promise<string>;
   isTranslating: boolean;
+  theme: Theme;
+  toggleTheme: () => void;
 }
 
 const translations = {
@@ -22,6 +25,7 @@ const translations = {
     'nav.volunteer': 'Volunteer',
     'nav.contact': 'Contact',
     'nav.donate': 'Donate Now',
+    'nav.blog': 'Blog',
     'hero.badge': 'Serving Humanity',
     'hero.title': 'Bringing Justice & Relief to the Vulnerable',
     'hero.desc': 'Al-Insaf Foundation is a non-profit organization dedicated to providing essential aid and restoring dignity to communities in need.',
@@ -61,6 +65,13 @@ const translations = {
     'cta.title': 'Ready to make an impact?',
     'cta.desc': 'Whether you donate your time or your resources, every bit helps us bring justice and relief to those who need it most.',
     'cta.button': 'Make a Donation Now',
+    'news.title': 'Latest News & Updates',
+    'news.desc': 'Stay informed about our latest projects, success stories, and ways to make a difference.',
+    'news.viewAll': 'View All News',
+    'news.readMore': 'Read More',
+    'impact.title': 'Your Donation Creates Real Change',
+    'impact.desc': 'See how different contribution levels help us serve more communities every day.',
+    'impact.donate': 'Donate This Amount',
     'about.header.desc': 'Dedicated to restoring justice and providing relief to the most vulnerable communities across the globe.',
     'about.mission.title': 'Our Mission',
     'about.mission.desc': 'To empower underserved communities by providing access to quality education, healthcare, and sustainable economic opportunities, while advocating for social justice and human rights for all.',
@@ -157,6 +168,49 @@ const translations = {
     'footer.links': 'Quick Links',
     'footer.contact': 'Contact Info',
     'footer.newsletter': 'Newsletter',
+    'footer.newsletter.placeholder': 'Your email address',
+    'footer.newsletter.sub': 'Subscribe to get updates on our latest projects and impact stories.',
+    'footer.rights': 'All rights reserved.',
+    'common.donate.now': 'Donate Now',
+    'common.learn.more': 'Learn More',
+    'common.read.more': 'Read More',
+    'common.view.all': 'View All',
+    'common.raised': 'Raised',
+    'common.goal': 'Goal',
+    'common.volunteers': 'Volunteers',
+    'common.joined': 'Joined us this month',
+    'common.inspiring': 'Inspiring Change',
+    'common.watch': 'Watch Full Story',
+    'common.darkMode': 'Dark Mode',
+    'common.lightMode': 'Light Mode',
+    'common.theme': 'Theme',
+    'faq.title': 'Frequently Asked Questions',
+    'faq.subtitle': 'Find answers to common questions about our work and how you can help.',
+    'faq.q1': 'How is my donation used?',
+    'faq.a1': 'We ensure that 90% of every donation goes directly to our programs on the ground. The remaining 10% helps us maintain operations and reach more people. We provide full transparency with detailed reports on how funds are allocated.',
+    'faq.q2': 'Is my donation tax-deductible?',
+    'faq.a2': 'Yes! Al-Insaf Foundation is a registered non-profit organization. All donations are tax-deductible to the fullest extent allowed by law. You will receive a tax receipt for your contribution.',
+    'faq.q3': 'How can I volunteer?',
+    'faq.a3': 'Simply fill out our volunteer registration form on the Volunteer page. We\'ll review your application and get back to you with opportunities that match your skills and interests.',
+    'faq.q4': 'Which countries do you operate in?',
+    'faq.a4': 'We currently operate in 5+ countries across South Asia, Africa, and the Middle East. Our focus is on reaching communities with the greatest need and limited access to essential services.',
+    'faq.q5': 'How do you ensure transparency?',
+    'faq.a5': 'We publish annual reports, conduct regular audits, and provide detailed updates on all our projects. Donors can track exactly how their contributions are being used through our transparent reporting system.',
+    'faq.q6': 'Can I sponsor a specific project?',
+    'faq.a6': 'Absolutely! You can choose to donate to any of our active campaigns or contact us directly to discuss sponsoring a specific initiative that aligns with your values.',
+    'newsletter.title': 'Stay Updated With Our Work',
+    'newsletter.desc': 'Subscribe to our newsletter and receive stories of impact, updates on campaigns, and ways to make a difference.',
+    'newsletter.placeholder': 'Enter your email',
+    'newsletter.subscribe': 'Subscribe',
+    'newsletter.subscribing': 'Subscribing...',
+    'newsletter.success.title': 'Thank you for subscribing!',
+    'newsletter.success.desc': 'Check your inbox for a confirmation email.',
+    'newsletter.privacy': 'By subscribing, you agree to our Privacy Policy. No spam, unsubscribe anytime.',
+    'testimonials.title': 'Stories of Impact',
+    'testimonials.subtitle': 'Hear from our donors, volunteers, and the communities we serve',
+    'partners.title': 'Trusted By Organizations Worldwide',
+    'partners.subtitle': 'We collaborate with leading organizations to maximize our impact',
+    'campaigns.support': 'Support our ongoing projects and help us reach our goals for this month.',
   },
   bn: {
     'nav.home': 'হোম',
@@ -166,6 +220,7 @@ const translations = {
     'nav.volunteer': 'স্বেচ্ছাসেবক',
     'nav.contact': 'যোগাযোগ',
     'nav.donate': 'এখনই দান করুন',
+    'nav.blog': 'ব্লগ',
     'hero.badge': 'মানবতার সেবা',
     'hero.title': 'অসহায়দের মাঝে ন্যায়বিচার ও ত্রাণ পৌঁছে দেওয়া',
     'hero.desc': 'আল-ইনসাফ ফাউন্ডেশন একটি অলাভজনক সংস্থা যা প্রয়োজনীয় সহায়তা প্রদান এবং অভাবী সম্প্রদায়গুলোর মর্যাদা পুনরুদ্ধারে নিবেদিত।',
@@ -205,11 +260,18 @@ const translations = {
     'cta.title': 'প্রভাব ফেলতে প্রস্তুত?',
     'cta.desc': 'আপনি আপনার সময় বা আপনার সম্পদ দান করুন না কেন, প্রতিটি ছোট অংশ আমাদের সবচেয়ে বেশি প্রয়োজন এমন লোকদের কাছে ন্যায়বিচার এবং ত্রাণ পৌঁছে দিতে সহায়তা করে।',
     'cta.button': 'এখনই দান করুন',
+    'news.title': 'সর্বশেষ সংবাদ ও আপডেট',
+    'news.desc': 'আমাদের সাম্প্রতিক প্রকল্প, সাফল্যের গল্প এবং পরিবর্তন আনার উপায় সম্পর্কে জানুন।',
+    'news.viewAll': 'সব সংবাদ দেখুন',
+    'news.readMore': 'আরও পড়ুন',
+    'impact.title': 'আপনার দান সত্যিকারের পরিবর্তন আনে',
+    'impact.desc': 'দেখুন বিভিন্ন পরিমাণের অবদান কীভাবে প্রতিদিন আরও বেশি সম্প্রদায়কে সেবা দিতে সাহায্য করে।',
+    'impact.donate': 'এই পরিমাণ দান করুন',
     'about.header.desc': 'বিশ্বজুড়ে সবচেয়ে অসহায় সম্প্রদায়গুলোর জন্য ন্যায়বিচার পুনরুদ্ধার এবং ত্রাণ প্রদানের জন্য নিবেদিত।',
     'about.mission.title': 'আমাদের লক্ষ্য',
-    'about.mission.desc': 'মানসম্মত শিক্ষা, স্বাস্থ্যসেবা এবং টেকসই অর্থনৈতিক সুযোগ প্রদানের মাধ্যমে সুবিধাবঞ্চিত সম্প্রদায়গুলোকে ক্ষমতায়ন করা, পাশাপাশি সবার জন্য সামাজিক ন্যায়বিচার এবং মানবাধিকারের পক্ষে কথা বলা।',
+    'about.mission.desc': 'মানসম্মত শিক্ষা, স্বাস্থ্যসেবা এবং টেকসই অর্থনৈতিক সুযোগ প্রদানের মাধ্যমে সুবিধাবঞ্চিত সম্প্রদায়গুলোকে ক্ষমতায়ন করা।',
     'about.vision.title': 'আমাদের দৃষ্টিভঙ্গি',
-    'about.vision.desc': 'এমন একটি বিশ্ব যেখানে প্রতিটি ব্যক্তির একটি ন্যায়সঙ্গত, সাম্যবাদী এবং সহানুভূতিশীল সমাজে দারিদ্র্য ও নিপীড়ন থেকে মুক্ত হয়ে বেড়ে ওঠার সুযোগ রয়েছে।',
+    'about.vision.desc': 'এমন একটি বিশ্ব যেখানে প্রতিটি ব্যক্তির একটি ন্যায়সঙ্গত, সাম্যবাদী এবং সহানুভূতিশীল সমাজে বেড়ে ওঠার সুযোগ রয়েছে।',
     'about.values.title': 'আমাদের মূল মূল্যবোধ',
     'about.values.desc': 'যে নীতিগুলো আমাদের প্রতিটি কাজকে পরিচালিত করে।',
     'about.values.integrity': 'সততা',
@@ -223,7 +285,7 @@ const translations = {
     'about.team.title': 'আমাদের দলের সাথে পরিচিত হোন',
     'about.team.desc': 'আল-ইনসাফ ফাউন্ডেশনের পেছনে থাকা নিবেদিতপ্রাণ ব্যক্তিরা।',
     'volunteer.title': 'আমাদের মিশনে যোগ দিন',
-    'volunteer.desc': 'স্বেচ্ছাসেবকরা আল-ইনসাফ ফাউন্ডেশনের মেরুদণ্ড। আপনার সময় এবং দক্ষতা প্রদানের মাধ্যমে, আপনি আমাদের আরও মানুষের কাছে পৌঁছাতে এবং সবচেয়ে বেশি প্রয়োজন এমন সম্প্রদায়গুলোতে স্থায়ী পরিবর্তন আনতে সাহায্য করতে পারেন।',
+    'volunteer.desc': 'স্বেচ্ছাসেবকরা আল-ইনসাফ ফাউন্ডেশনের মেরুদণ্ড। আপনার সময় এবং দক্ষতা প্রদানের মাধ্যমে আমাদের সাহায্য করুন।',
     'volunteer.form.title': 'রেজিস্ট্রেশন ফর্ম',
     'volunteer.form.name': 'পুরো নাম',
     'volunteer.form.email': 'ইমেল ঠিকানা',
@@ -238,7 +300,7 @@ const translations = {
     'volunteer.benefit.growth.desc': 'অভিজ্ঞতা এবং নতুন দৃষ্টিভঙ্গি অর্জন করুন।',
     'volunteer.benefit.network': 'বৈশ্বিক নেটওয়ার্ক',
     'volunteer.benefit.network.desc': 'সমমনা পরিবর্তনকারীদের সাথে সংযোগ স্থাপন করুন।',
-    'volunteer.testimonial': '"আল-ইনসাফের সাথে স্বেচ্ছাসেবক হিসেবে কাজ করা আমার জীবনকে ততটাই বদলে দিয়েছে যতটা আমি যাদের সাহায্য করেছি তাদের জীবন বদলেছে।"',
+    'volunteer.testimonial': '"আল-ইনসাফের সাথে স্বেচ্ছাসেবক হিসেবে কাজ করা আমার জীবনকে বদলে দিয়েছে।"',
     'volunteer.testimonial.author': '— ডেভিড মিলার, ২০২১ সাল থেকে স্বেচ্ছাসেবক',
     'volunteer.form.dob': 'জন্ম তারিখ',
     'volunteer.form.motivation': 'আপনি কেন যোগ দিতে চান?',
@@ -279,7 +341,7 @@ const translations = {
     'donate.nagad': 'নগদ (পার্সোনাল)',
     'donate.bank': 'ব্যাংক ট্রান্সফার',
     'donate.bank.info': 'আল-ইনসাফ ফাউন্ডেশন, অ্যাকাউন্ট: ১২৩৪৫৬৭৮৯, ব্যাংক: ইসলামী ব্যাংক বিডি',
-    'campaigns.header.desc': 'আমাদের সাম্প্রতিক প্রকল্পগুলো অন্বেষণ করুন এবং আপনার পছন্দের একটি কারণ বেছে নিন। প্রতিটি দান, তা যত ছোটই হোক না কেন, একটি গুরুত্বপূর্ণ প্রভাব ফেলে।',
+    'campaigns.header.desc': 'আমাদের সাম্প্রতিক প্রকল্পগুলো অন্বেষণ করুন এবং আপনার পছন্দের একটি কারণ বেছে নিন।',
     'campaigns.search': 'ক্যাম্পেইন খুঁজুন...',
     'campaigns.cat.all': 'সব',
     'campaigns.cat.edu': 'শিক্ষা',
@@ -291,7 +353,7 @@ const translations = {
     'campaigns.goal': 'লক্ষ্য',
     'campaigns.details': 'বিস্তারিত',
     'campaigns.donate': 'দান করুন',
-    'gallery.header.desc': 'আমাদের প্রকল্প এবং আমরা যে জীবনগুলোকে স্পর্শ করেছি তার একটি ভিজ্যুয়াল যাত্রা। প্রতিটি ছবি আশা এবং সহনশীলতার গল্প বলে।',
+    'gallery.header.desc': 'আমাদের প্রকল্প এবং আমরা যে জীবনগুলোকে স্পর্শ করেছি তার একটি ভিজ্যুয়াল যাত্রা।',
     'gallery.cat.all': 'সব',
     'gallery.cat.edu': 'শিক্ষা',
     'gallery.cat.health': 'স্বাস্থ্য',
@@ -301,6 +363,49 @@ const translations = {
     'footer.links': 'দ্রুত লিঙ্ক',
     'footer.contact': 'যোগাযোগের তথ্য',
     'footer.newsletter': 'নিউজলেটার',
+    'footer.newsletter.placeholder': 'আপনার ইমেল ঠিকানা',
+    'footer.newsletter.sub': 'আমাদের সাম্প্রতিক প্রকল্প এবং প্রভাবের গল্প সম্পর্কে আপডেট পেতে সাবস্ক্রাইব করুন।',
+    'footer.rights': 'সর্বস্বত্ব সংরক্ষিত।',
+    'common.donate.now': 'এখনই দান করুন',
+    'common.learn.more': 'আরও জানুন',
+    'common.read.more': 'আরও পড়ুন',
+    'common.view.all': 'সব দেখুন',
+    'common.raised': 'সংগৃহীত',
+    'common.goal': 'লক্ষ্য',
+    'common.volunteers': 'স্বেচ্ছাসেবক',
+    'common.joined': 'এই মাসে যোগ দিয়েছেন',
+    'common.inspiring': 'অনুপ্রেরণামূলক পরিবর্তন',
+    'common.watch': 'পুরো গল্প দেখুন',
+    'common.darkMode': 'ডার্ক মোড',
+    'common.lightMode': 'লাইট মোড',
+    'common.theme': 'থিম',
+    'faq.title': 'সাধারণ জিজ্ঞাসা',
+    'faq.subtitle': 'আমাদের কাজ এবং কীভাবে সাহায্য করতে পারেন সে সম্পর্কে সাধারণ প্রশ্নের উত্তর খুঁজুন।',
+    'faq.q1': 'আমার দান কীভাবে ব্যবহার হয়?',
+    'faq.a1': 'আমরা নিশ্চিত করি যে প্রতিটি দানের ৯০% সরাসরি মাঠপর্যায়ের কার্যক্রমে যায়। বাকি ১০% পরিচালনা বজায় রাখতে এবং আরও মানুষের কাছে পৌঁছাতে ব্যবহৃত হয়।',
+    'faq.q2': 'আমার দান কি কর-ছাড়যোগ্য?',
+    'faq.a2': 'হ্যাঁ! আল-ইনসাফ ফাউন্ডেশন একটি নিবন্ধিত অলাভজনক সংস্থা। সমস্ত দান আইন অনুযায়ী সর্বোচ্চ পরিমাণে কর-ছাড়যোগ্য।',
+    'faq.q3': 'আমি কীভাবে স্বেচ্ছাসেবক হতে পারি?',
+    'faq.a3': 'শুধু স্বেচ্ছাসেবক পাতায় আমাদের নিবন্ধন ফর্ম পূরণ করুন। আমরা আপনার আবেদন পর্যালোচনা করব এবং আপনার দক্ষতার সাথে মানানসই সুযোগ নিয়ে যোগাযোগ করব।',
+    'faq.q4': 'আপনারা কোন কোন দেশে কাজ করেন?',
+    'faq.a4': 'আমরা বর্তমানে দক্ষিণ এশিয়া, আফ্রিকা এবং মধ্যপ্রাচ্যের ৫টিরও বেশি দেশে কাজ করি।',
+    'faq.q5': 'আপনারা কীভাবে স্বচ্ছতা নিশ্চিত করেন?',
+    'faq.a5': 'আমরা বার্ষিক প্রতিবেদন প্রকাশ করি, নিয়মিত নিরীক্ষা পরিচালনা করি এবং সকল প্রকল্পে বিস্তারিত আপডেট প্রদান করি।',
+    'faq.q6': 'আমি কি একটি নির্দিষ্ট প্রকল্পে স্পনসর করতে পারি?',
+    'faq.a6': 'অবশ্যই! আপনি আমাদের যেকোনো সক্রিয় ক্যাম্পেইনে দান করতে পারেন বা আমাদের সাথে সরাসরি যোগাযোগ করতে পারেন।',
+    'newsletter.title': 'আমাদের কার্যক্রম সম্পর্কে আপডেট থাকুন',
+    'newsletter.desc': 'আমাদের নিউজলেটার সাবস্ক্রাইব করুন এবং প্রভাবের গল্প, ক্যাম্পেইনের আপডেট এবং পরিবর্তন আনার উপায় পান।',
+    'newsletter.placeholder': 'আপনার ইমেল লিখুন',
+    'newsletter.subscribe': 'সাবস্ক্রাইব করুন',
+    'newsletter.subscribing': 'সাবস্ক্রাইব হচ্ছে...',
+    'newsletter.success.title': 'সাবস্ক্রাইব করার জন্য ধন্যবাদ!',
+    'newsletter.success.desc': 'নিশ্চিতকরণ ইমেলের জন্য আপনার ইনবক্স চেক করুন।',
+    'newsletter.privacy': 'সাবস্ক্রাইব করে আপনি আমাদের গোপনীয়তা নীতিতে সম্মত হচ্ছেন। কোনো স্প্যাম নেই, যেকোনো সময় আনসাবস্ক্রাইব করুন।',
+    'testimonials.title': 'প্রভাবের গল্প',
+    'testimonials.subtitle': 'আমাদের দাতা, স্বেচ্ছাসেবক এবং আমরা যে সম্প্রদায়গুলো সেবা করি তাদের কথা শুনুন',
+    'partners.title': 'বিশ্বজুড়ে সংস্থাগুলো আমাদের বিশ্বাস করে',
+    'partners.subtitle': 'আমরা আমাদের প্রভাব সর্বাধিক করতে শীর্ষস্থানীয় সংস্থাগুলোর সাথে সহযোগিতা করি',
+    'campaigns.support': 'আমাদের চলমান প্রকল্পগুলো সমর্থন করুন এবং এই মাসে আমাদের লক্ষ্য পূরণে সাহায্য করুন।',
   }
 };
 
@@ -314,14 +419,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return 'en';
   });
 
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('theme') as Theme) || 'light';
+    }
+    return 'light';
+  });
+
   const [isTranslating, setIsTranslating] = useState(false);
-  const [dynamicCache, setDynamicCache] = useState<Record<string, string>>(() => {
+
+  // Use ref for cache to avoid triggering re-renders / infinite loops in translate()
+  const dynamicCacheRef = useRef<Record<string, string>>({});
+
+  // Load cache from localStorage on mount
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('dynamic_translations');
-      return saved ? JSON.parse(saved) : {};
+      if (saved) {
+        try {
+          dynamicCacheRef.current = JSON.parse(saved);
+        } catch {
+          dynamicCacheRef.current = {};
+        }
+      }
     }
-    return {};
-  });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('language', language);
@@ -329,54 +451,71 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [language]);
 
   useEffect(() => {
-    localStorage.setItem('dynamic_translations', JSON.stringify(dynamicCache));
-  }, [dynamicCache]);
+    localStorage.setItem('theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   const setLanguage = (lang: Language) => setLanguageState(lang);
 
-  const t = (key: string) => {
-    // Check static translations first
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => (prev === 'light' ? 'dark' : 'light'));
+  }, []);
+
+  const t = (key: string): string => {
     const staticTranslation = translations[language][key as keyof typeof translations['en']];
     if (staticTranslation) return staticTranslation;
 
-    // Check dynamic cache
+    // Fixed bug: was dynamicCache[dynamicCache[cacheKey]] which is wrong
     const cacheKey = `${language}:${key}`;
-    if (dynamicCache[cacheKey]) return dynamicCache[dynamicCache[cacheKey]];
+    if (dynamicCacheRef.current[cacheKey]) return dynamicCacheRef.current[cacheKey];
 
     return key;
   };
 
   const translate = useCallback(async (text: string): Promise<string> => {
     if (!text || language === 'en') return text;
-    
+
     const cacheKey = `${language}:${text}`;
-    if (dynamicCache[cacheKey]) return dynamicCache[cacheKey];
+    if (dynamicCacheRef.current[cacheKey]) return dynamicCacheRef.current[cacheKey];
 
     setIsTranslating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
-      
-      const prompt = `Translate the following text to ${language === 'bn' ? 'Bengali' : 'English'}. Return ONLY the translated text, nothing else: "${text}"`;
-      
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      if (!apiKey) {
+        console.warn('NEXT_PUBLIC_GEMINI_API_KEY is not set. Dynamic translation disabled.');
+        return text;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const targetLang = language === 'bn' ? 'Bengali' : 'English';
+      const prompt = `Translate the following text to ${targetLang}. Return ONLY the translated text, no quotes, no explanation: ${text}`;
+
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: 'gemini-2.0-flash',
         contents: prompt,
       });
-      
+
       const translatedText = response.text?.trim() || text;
-      
-      setDynamicCache(prev => ({ ...prev, [cacheKey]: translatedText }));
+
+      // Store in ref (no re-render) and persist to localStorage
+      dynamicCacheRef.current[cacheKey] = translatedText;
+      localStorage.setItem('dynamic_translations', JSON.stringify(dynamicCacheRef.current));
+
       return translatedText;
     } catch (error) {
-      console.error("Translation error:", error);
+      console.error('Translation error:', error);
       return text;
     } finally {
       setIsTranslating(false);
     }
-  }, [language, dynamicCache]);
+  }, [language]); // Only depends on language — no more infinite loops
 
   return (
-    <AppContext.Provider value={{ language, setLanguage, t, translate, isTranslating }}>
+    <AppContext.Provider value={{ language, setLanguage, t, translate, isTranslating, theme, toggleTheme }}>
       {children}
     </AppContext.Provider>
   );
